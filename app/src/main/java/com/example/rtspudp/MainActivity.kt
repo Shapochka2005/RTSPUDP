@@ -10,31 +10,38 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        StreamData.init(listOf(
-            StreamDataModel(
-                name = "RTSP protocol",
-                url = "rtsp://192.168.19.225:4554/test",
-                protocol = "RTSP"
-            ),
-            StreamDataModel(
-                name = "UDP protocol",
-                url = "udp://@239.1.3.4:5000", // Regular UDP (replace with your server IP)
-                protocol = "UDP"
-            )
-        ))
+        StreamData.init(this)
 
         setContent {
             MaterialTheme {
                 StreamListScreen(
-                    streams = StreamData.getAll(),
+                    streams = StreamData.streams,
                     onStreamClick = { position ->
                         val intent = Intent(this, VideoActivity::class.java)
                         intent.putExtra("position", position)
                         startActivity(intent)
+                    },
+                    onAddStream = { name, url ->
+                        val protocol = determineProtocol(url)
+                        StreamData.addStream(this, StreamDataModel(
+                            name = name.ifBlank { "Custom Stream ($protocol)" },
+                            url = url,
+                            protocol = protocol
+                        ))
+                    },
+                    onDeleteStream = { index ->
+                        StreamData.deleteStream(this, index)
                     }
                 )
-
             }
+        }
+    }
+
+    private fun determineProtocol(url: String): String {
+        return when {
+            url.startsWith("rtsp://", ignoreCase = true) -> "RTSP"
+            url.startsWith("rtmp://", ignoreCase = true) -> "RTMP"
+            else -> "Unknown"
         }
     }
 }

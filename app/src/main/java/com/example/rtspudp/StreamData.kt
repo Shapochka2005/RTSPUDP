@@ -1,31 +1,47 @@
 package com.example.rtspudp
 
+import android.content.Context
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.snapshots.SnapshotStateList
+
 data class StreamDataModel(val name: String, val url: String, val protocol: String)
 
 object StreamData {
-    private var streams = mutableListOf<StreamDataModel>()
+    private var _streams: SnapshotStateList<StreamDataModel> = mutableStateListOf()
+    val streams: List<StreamDataModel> get() = _streams
 
-    fun init(initialStreams: List<StreamDataModel>) {
-        streams.clear()
-        streams.addAll(initialStreams)
+    private val defaultStreams = listOf(
+        StreamDataModel(
+            name = "RTSP protocol",
+            url = "rtsp://192.168.19.217:554/live",
+            protocol = "RTSP"
+        ),
+        StreamDataModel(
+            name = "RTMP protocol",
+            url = "rtmp://192.168.19.217:1935/live/aboba",
+            protocol = "RTMP"
+        )
+    )
+
+    fun init(context: Context) {
+        val savedStreams = SharedPrefManager.loadStreams(context)
+        _streams.clear()
+        _streams.addAll(if (savedStreams.isNotEmpty()) savedStreams else defaultStreams)
     }
 
-    fun getAll(): List<StreamDataModel> = streams
+    fun addStream(context: Context, stream: StreamDataModel) {
+        _streams.add(stream)
+        SharedPrefManager.saveStreams(context, _streams)
+    }
+
+    fun deleteStream(context: Context, index: Int) {
+        if (index in _streams.indices) {
+            _streams.removeAt(index)
+            SharedPrefManager.saveStreams(context, _streams)
+        }
+    }
 
     fun getByPosition(position: Int): StreamDataModel? {
-        if (position < 0 || position >= streams.count()) {
-            return null
-        }
-        return streams[position]
-    }
-
-    fun addStream(stream: StreamDataModel) {
-        streams.add(stream)
-    }
-
-    fun deleteStream(index: Int) {
-        if (index in 0 until streams.size) {
-            streams.removeAt(index)
-        }
+        return _streams.getOrNull(position)
     }
 }

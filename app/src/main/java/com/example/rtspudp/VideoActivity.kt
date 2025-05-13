@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -31,10 +32,13 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.ui.AspectRatioFrameLayout
+import com.example.rtspudp.ProtocolHandlers.RtmpStreamHandler
+import com.example.rtspudp.ProtocolHandlers.RtspStreamHandler
 import org.videolan.libvlc.MediaPlayer
 import org.videolan.libvlc.util.VLCVideoLayout
 
@@ -67,7 +71,7 @@ fun VideoScreen(position: Int) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stream?.name ?: "Stream") },
+                title = { Text(stream?.name ?: "Стрим") },
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -86,12 +90,14 @@ fun VideoScreen(position: Int) {
                 }
         ) {
             when (stream?.protocol) {
-                "UDP" -> {
-                    val player = remember { UdpStreamHandler.createPlayer(context) }
-                    val surfaceView = remember { SurfaceView(context) }
+                "RTMP" -> {
+                    val player = remember { RtmpStreamHandler.createPlayer(context) }
+                    val surfaceView = remember { SurfaceView(context).apply {
+                        holder.setFixedSize(width, height)
+                    } }
 
                     DisposableEffect(stream) {
-                        val handler = UdpStreamHandler(context, player, surfaceView)
+                        val handler = RtmpStreamHandler(context, player, surfaceView)
                         handler.playStream(stream.url)
 
                         onDispose {
@@ -100,39 +106,47 @@ fun VideoScreen(position: Int) {
                     }
 
                     DisposableEffect(player) {
+                        player.videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT
+
+                        // Create the listener as a val so we can reference it later
                         val listener = object : Player.Listener {
+                            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                                surfaceView.holder.setFixedSize(videoSize.width, videoSize.height)
+                            }
+
                             override fun onPlaybackStateChanged(playbackState: Int) {
                                 when (playbackState) {
                                     Player.STATE_BUFFERING -> {
                                         isLoading = true
-                                        Log.d("Media3", "Buffering...")
+                                        Log.d("Media3", "Buffering RTMP...")
                                     }
                                     Player.STATE_READY -> {
                                         isLoading = false
-                                        Log.d("Media3", "Playback ready")
+                                        Log.d("Media3", "RTMP ready to play")
                                     }
-                                    Player.STATE_ENDED -> Log.d("Media3", "Playback ended")
-                                    Player.STATE_IDLE -> Log.d("Media3", "Player idle")
+                                    Player.STATE_ENDED -> Log.d("Media3", "RTMP playback ended")
+                                    Player.STATE_IDLE -> Log.d("Media3", "RTMP player idle")
                                 }
                             }
 
                             override fun onPlayerError(error: PlaybackException) {
                                 isLoading = false
-                                Log.e("Media3", "Playback error", error)
+                                Log.e("Media3", "RTMP playback error", error)
                             }
                         }
 
                         player.addListener(listener)
 
                         onDispose {
-                            player.removeListener(listener)
+                            player.removeListener(listener) // Now we can reference it properly
                         }
                     }
 
                     AndroidView(
                         factory = { surfaceView },
                         modifier = Modifier
-                            .fillMaxSize()
+                            .fillMaxWidth()
+                            .aspectRatio(16f/9f) // Adjust ratio as needed
                             .graphicsLayer(
                                 scaleX = scale,
                                 scaleY = scale,
@@ -141,6 +155,7 @@ fun VideoScreen(position: Int) {
                             )
                     )
                 }
+
                 "RTSP" -> {
                     val (libVlc, mediaPlayer) = remember {
                         val libVLC = RtspStreamHandler.createLibVLC(context)
@@ -165,23 +180,23 @@ fun VideoScreen(position: Int) {
                                 MediaPlayer.Event.Buffering -> {
                                     if (event.buffering == 100f) {
                                         isLoading = false
-                                        Log.d("VLC", "Buffering complete")
+                                        Log.d("VLC", "Буферизация завершена")
                                     }
                                 }
-                                MediaPlayer.Event.Opening -> Log.d("VLC", "Connecting...")
+                                MediaPlayer.Event.Opening -> Log.d("VLC", "Подключение...")
                                 MediaPlayer.Event.Playing -> {
                                     isLoading = false
-                                    Log.d("VLC", "Stream started!")
+                                    Log.d("VLC", "RTSP стрим начался!")
                                 }
-                                MediaPlayer.Event.Paused -> Log.d("VLC", "Paused")
-                                MediaPlayer.Event.Stopped -> Log.d("VLC", "Stopped")
-                                MediaPlayer.Event.EndReached -> Log.d("VLC", "Stream ended")
+                                MediaPlayer.Event.Paused -> Log.d("VLC", "На паузе")
+                                MediaPlayer.Event.Stopped -> Log.d("VLC", "Остановлен")
+                                MediaPlayer.Event.EndReached -> Log.d("VLC", "Стрим завершен")
                                 MediaPlayer.Event.EncounteredError -> {
                                     isLoading = false
-                                    Log.e("VLC", "Error: ${event.type}")
+                                    Log.e("VLC", "Ошибка: ${event.type}")
                                 }
                                 else -> {
-                                    Log.d("VLC", "Unhandled event: ${event.type}")
+                                    Log.d("VLC", "Необработанное событие: ${event.type}")
                                 }
                             }
                         }
@@ -207,9 +222,10 @@ fun VideoScreen(position: Int) {
                             )
                     )
                 }
+
                 else -> {
                     Text(
-                        text = "Unsupported protocol: ${stream?.protocol}",
+                        text = "Неподдерживаемый протокол: ${stream?.protocol}",
                         modifier = Modifier.align(Alignment.Center),
                         color = Color.White
                     )

@@ -27,13 +27,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 @Composable
 fun StreamListScreen(
     streams: List<StreamDataModel>,
-    onStreamClick: (Int) -> Unit
+    onStreamClick: (Int) -> Unit,
+    onAddStream: (String, String) -> Unit,
+    onDeleteStream: (Int) -> Unit
 ) {
     var newUrl by remember { mutableStateOf("") }
     var newName by remember { mutableStateOf("") }
@@ -44,7 +46,6 @@ fun StreamListScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // Поле для ввода имени стрима
             TextField(
                 value = newName,
                 onValueChange = { newName = it },
@@ -56,30 +57,21 @@ fun StreamListScreen(
                 label = { Text("Название") }
             )
 
-            // Поле для ввода URL
             TextField(
                 value = newUrl,
                 onValueChange = { newUrl = it },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
-                placeholder = { Text("rtsp:// или udp:// URL") },
+                placeholder = { Text("rtsp:// или rtmp:// URL") },
                 singleLine = true,
                 label = { Text("URL стрима") }
             )
 
-            // Кнопка добавления
             Button(
                 onClick = {
                     if (newUrl.isNotBlank()) {
-                        val protocol = determineProtocol(newUrl)
-                        StreamData.addStream(
-                            StreamDataModel(
-                                name = if (newName.isBlank()) "Custom Stream ($protocol)" else newName,
-                                url = newUrl,
-                                protocol = protocol
-                            )
-                        )
+                        onAddStream(newName, newUrl)
                         newUrl = ""
                         newName = ""
                     }
@@ -92,16 +84,26 @@ fun StreamListScreen(
                 Text("Добавить стрим")
             }
 
-            // Список стримов
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                itemsIndexed(streams) { index, stream ->
-                    StreamItem(
-                        stream = stream,
-                        onItemClick = { onStreamClick(index) },
-                        onDeleteClick = { StreamData.deleteStream(index) }
-                    )
+            if (streams.isEmpty()) {
+                Text(
+                    text = "Нет доступных стримов",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    itemsIndexed(streams) { index, stream ->
+                        StreamItem(
+                            stream = stream,
+                            onItemClick = { onStreamClick(index) },
+                            onDeleteClick = { onDeleteStream(index) }
+                        )
+                    }
                 }
             }
         }
@@ -115,7 +117,9 @@ private fun StreamItem(
     onDeleteClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onItemClick)
     ) {
         Row(
             modifier = Modifier
@@ -124,9 +128,7 @@ private fun StreamItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable(onClick = onItemClick)
+                modifier = Modifier.weight(1f)
             ) {
                 Text(
                     text = stream.name,
@@ -134,11 +136,13 @@ private fun StreamItem(
                 )
                 Text(
                     text = stream.url,
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
                 Text(
                     text = "Протокол: ${stream.protocol}",
-                    style = MaterialTheme.typography.labelSmall
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
 
@@ -153,15 +157,5 @@ private fun StreamItem(
                 )
             }
         }
-    }
-}
-
-private fun determineProtocol(url: String): String {
-    return when {
-        url.startsWith("rtsp://", ignoreCase = true) -> "RTSP"
-        url.startsWith("udp://", ignoreCase = true) -> "UDP"
-        url.startsWith("http://", ignoreCase = true) -> "HTTP"
-        url.startsWith("https://", ignoreCase = true) -> "HTTPS"
-        else -> "Unknown"
     }
 }

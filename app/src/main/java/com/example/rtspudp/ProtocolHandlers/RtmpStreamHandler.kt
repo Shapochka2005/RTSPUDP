@@ -1,4 +1,4 @@
-package com.example.rtspudp
+package com.example.rtspudp.ProtocolHandlers
 
 import android.content.Context
 import android.net.Uri
@@ -9,13 +9,13 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.UdpDataSource
+import androidx.media3.datasource.rtmp.RtmpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 
 @UnstableApi
-class UdpStreamHandler(
+class RtmpStreamHandler(
     private val context: Context,
     private val player: ExoPlayer,
     private val surfaceView: SurfaceView
@@ -27,19 +27,16 @@ class UdpStreamHandler(
         player.prepare()
         player.playWhenReady = true
         player.repeatMode = Player.REPEAT_MODE_OFF
-        Log.d("UdpStreamHandler", "Unicast UDP playback started")
+        Log.d("RtmpStreamHandler", "RTMP playback started")
     }
 
     companion object {
         fun createPlayer(context: Context): ExoPlayer {
-            // Создаем DataSource.Factory на базе UdpDataSource
-            val udpFactory: DataSource.Factory = DataSource.Factory {
-                UdpDataSource(
-                    /* maxPacketSize = */ UdpDataSource.DEFAULT_MAX_PACKET_SIZE,
-                    /* socketTimeoutMillis = */ UdpDataSource.DEFAULT_SOCKET_TIMEOUT_MILLIS
-                )
+            // Create a DataSource.Factory based on RtmpDataSource
+            val rtmpFactory: DataSource.Factory = DataSource.Factory {
+                RtmpDataSource()
             }
-            val dataSourceFactory = DefaultDataSource.Factory(context, udpFactory)
+            val dataSourceFactory = DefaultDataSource.Factory(context, rtmpFactory)
 
             return ExoPlayer.Builder(context)
                 .setMediaSourceFactory(

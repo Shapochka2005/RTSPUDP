@@ -1,4 +1,4 @@
-package com.example.rtspudp
+package com.example.rtspudp.ProtocolHandlers
 
 import android.content.Context
 import android.net.Uri
