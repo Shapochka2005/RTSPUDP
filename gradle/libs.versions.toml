@@ -17,6 +17,8 @@ material = "1.12.0"
 activity = "1.10.1"
 constraintlayout = "2.2.0"
 media3DatasourceRtmp = "1.6.1"
+roomCommonJvm = "2.7.1"
+roomRuntimeAndroid = "2.7.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -42,6 +44,8 @@ material = { group = "com.google.android.material", name = "material", version.r
 androidx-activity = { group = "androidx.activity", name = "activity", version.ref = "activity" }
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 androidx-media3-datasource-rtmp = { group = "androidx.media3", name = "media3-datasource-rtmp", version.ref = "media3DatasourceRtmp" }
+androidx-room-common-jvm = { group = "androidx.room", name = "room-common-jvm", version.ref = "roomCommonJvm" }
+androidx-room-runtime-android = { group = "androidx.room", name = "room-runtime-android", version.ref = "roomRuntimeAndroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

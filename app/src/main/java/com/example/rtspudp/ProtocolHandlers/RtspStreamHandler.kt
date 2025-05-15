@@ -1,8 +1,8 @@
 package com.example.rtspudp.ProtocolHandlers
 
 import android.content.Context
-import android.net.Uri
 import android.util.Log
+import androidx.core.net.toUri
 import org.videolan.libvlc.LibVLC
 import org.videolan.libvlc.Media
 import org.videolan.libvlc.MediaPlayer
@@ -14,15 +14,17 @@ class RtspStreamHandler(
 ) {
     fun playStream(streamUrl: String) {
         try {
-            val uri = Uri.parse(streamUrl)
-            Media(libVLC, uri).apply {
+            val media = Media(libVLC, streamUrl.toUri()).apply {
                 setHWDecoderEnabled(true, false)
-                addOption(":network-caching=150")
+                addOption(":network-caching=300")
                 addOption(":rtsp-frame-buffer-size=1000000")
                 addOption(":rtsp-tcp")
-                mediaPlayer.media = this
-            }.release()
+                addOption(":rtsp-timeout=5000") // Таймаут 5 секунд
+                addOption(":http-reconnect") // Автопереподключение
+            }
 
+            mediaPlayer.media = media
+            media.release()
             mediaPlayer.play()
         } catch (e: Exception) {
             Log.e("RtspStreamHandler", "Error playing RTSP stream", e)
@@ -42,6 +44,8 @@ class RtspStreamHandler(
                 "--file-caching=500",
                 "--live-caching=500",
                 "--clock-jitter=0",
+                "--rtsp-timeout=5000",
+                "--http-reconnect",
                 "--verbose=2"
             ))
         }
